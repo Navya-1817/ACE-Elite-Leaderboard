@@ -3,8 +3,10 @@
 
 set -o errexit
 
-# Upgrade pip
-pip install --upgrade pip
+echo "Python version: $(python --version)"
+
+# Upgrade pip and install setuptools
+pip install --upgrade pip setuptools wheel
 
 # Install dependencies (numpy first, then pandas)
 pip install numpy==1.24.3
