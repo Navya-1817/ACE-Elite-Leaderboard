@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Internship - ACE Elite Leaderboard{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="form-container">
+        <h2>Edit Internship</h2>
+        
+        <form method="POST">
+            <div class="form-group">
+                <label for="company_name">Company Name *</label>
+                <input type="text" id="company_name" name="company_name" value="{{ internship.company_name }}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="position">Position *</label>
+                <input type="text" id="position" name="position" value="{{ internship.position }}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="start_date">Start Date *</label>
+                <input type="date" id="start_date" name="start_date" value="{{ internship.start_date }}" required>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="is_ongoing" name="is_ongoing" {% if internship.is_ongoing %}checked{% endif %}>
+                    Currently Ongoing
+                </label>
+            </div>
+
+            <div class="form-group" id="end_date_group">
+                <label for="end_date">End Date</label>
+                <input type="date" id="end_date" name="end_date" value="{{ internship.end_date or '' }}">
+            </div>
+
+            <div class="form-group">
+                <label for="location">Location</label>
+                <input type="text" id="location" name="location" value="{{ internship.location or '' }}" placeholder="e.g., Bangalore, Remote">
+            </div>
+
+            <div class="form-group">
+                <label for="work_mode">Work Mode</label>
+                <select id="work_mode" name="work_mode">
+                    <option value="">Select...</option>
+                    <option value="Remote" {% if internship.work_mode == 'Remote' %}selected{% endif %}>Remote</option>
+                    <option value="On-site" {% if internship.work_mode == 'On-site' %}selected{% endif %}>On-site</option>
+                    <option value="Hybrid" {% if internship.work_mode == 'Hybrid' %}selected{% endif %}>Hybrid</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="stipend">Stipend</label>
+                <input type="text" id="stipend" name="stipend" value="{{ internship.stipend or '' }}" placeholder="e.g., 15,000/month">
+            </div>
+
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea id="description" name="description" rows="4">{{ internship.description or '' }}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="skills_used">Skills Used</label>
+                <input type="text" id="skills_used" name="skills_used" value="{{ internship.skills_used or '' }}" placeholder="e.g., Python, Django, REST API">
+            </div>
+
+            <div class="form-group">
+                <label for="certificate_url">Certificate URL</label>
+                <input type="url" id="certificate_url" name="certificate_url" value="{{ internship.certificate_url or '' }}" placeholder="https://...">
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Update Internship</button>
+                <a href="{{ url_for('student_my_internships') }}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .form-container {
+        max-width: 800px;
+        margin: 2rem auto;
+        background: white;
+        padding: 2rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        color: #333;
+    }
+
+    .form-group input[type="checkbox"] {
+        width: auto;
+        margin-right: 0.5rem;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 1rem;
+    }
+
+    .form-group textarea {
+        resize: vertical;
+    }
+
+    .form-group small {
+        display: block;
+        margin-top: 0.25rem;
+        color: #666;
+        font-size: 0.9em;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+    }
+
+    .btn {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 4px;
+        font-size: 1rem;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+        text-align: center;
+    }
+
+    .btn-primary {
+        background: #2563eb;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #1d4ed8;
+    }
+
+    .btn-secondary {
+        background: #6b7280;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background: #4b5563;
+    }
+</style>
+
+<script>
+    // Toggle end date field based on ongoing checkbox
+    const ongoingCheckbox = document.getElementById('is_ongoing');
+    const endDateGroup = document.getElementById('end_date_group');
+    const endDateInput = document.getElementById('end_date');
+
+    function toggleEndDate() {
+        if (ongoingCheckbox.checked) {
+            endDateGroup.style.display = 'none';
+            endDateInput.required = false;
+            endDateInput.value = '';
+        } else {
+            endDateGroup.style.display = 'block';
+            endDateInput.required = false;
+        }
+    }
+
+    ongoingCheckbox.addEventListener('change', toggleEndDate);
+    toggleEndDate(); // Run on page load
+</script>
+{% endblock %}

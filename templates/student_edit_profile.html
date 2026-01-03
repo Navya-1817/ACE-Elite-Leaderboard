@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Profile - {{ student.name }}{% endblock %}
+
+{% block content %}
+<div class="edit-profile-container">
+    <div class="profile-header">
+        <h1>Edit Profile</h1>
+        <a href="{{ url_for('student_dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
+    </div>
+    
+    <form method="POST" class="profile-form">
+        <!-- Basic Info -->
+        <div class="form-section">
+            <h2>📝 Basic Information</h2>
+            
+            <div class="form-group">
+                <label for="name">Name *</label>
+                <input type="text" id="name" name="name" class="form-control" 
+                       value="{{ student.name }}" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Email *</label>
+                <input type="email" id="email" name="email" class="form-control" 
+                       value="{{ student.email }}" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="phone">Phone</label>
+                <input type="tel" id="phone" name="phone" class="form-control" 
+                       value="{{ student.phone if student.phone else '' }}">
+            </div>
+        </div>
+        
+        <!-- Coding Handles -->
+        <div class="form-section">
+            <h2>💻 Coding Platforms</h2>
+            
+            <div class="form-group">
+                <label for="cf_handle">Codeforces Handle</label>
+                <input type="text" id="cf_handle" name="cf_handle" class="form-control" 
+                       value="{{ student.cf_handle if student.cf_handle else '' }}"
+                       placeholder="e.g., tourist">
+            </div>
+            
+            <div class="form-group">
+                <label for="lc_username">LeetCode Username</label>
+                <input type="text" id="lc_username" name="lc_username" class="form-control" 
+                       value="{{ student.lc_username if student.lc_username else '' }}"
+                       placeholder="e.g., john_doe">
+            </div>
+            
+            <div class="form-group">
+                <label for="cc_username">CodeChef Username</label>
+                <input type="text" id="cc_username" name="cc_username" class="form-control" 
+                       value="{{ student.cc_username if student.cc_username else '' }}"
+                       placeholder="e.g., johnchef">
+            </div>
+        </div>
+        
+        <!-- Social Links -->
+        <div class="form-section">
+            <h2>🔗 Social Links</h2>
+            
+            <div class="form-group">
+                <label for="linkedin_url">LinkedIn Profile</label>
+                <input type="url" id="linkedin_url" name="linkedin_url" class="form-control" 
+                       value="{{ student.linkedin_url if student.linkedin_url else '' }}"
+                       placeholder="https://linkedin.com/in/yourprofile">
+            </div>
+            
+            <div class="form-group">
+                <label for="github_url">GitHub Profile</label>
+                <input type="url" id="github_url" name="github_url" class="form-control" 
+                       value="{{ student.github_url if student.github_url else '' }}"
+                       placeholder="https://github.com/yourusername">
+            </div>
+        </div>
+        
+        <!-- Change Password -->
+        <div class="form-section">
+            <h2>🔒 Change Password</h2>
+            <p class="info-text">Leave blank if you don't want to change your password</p>
+            
+            <div class="form-group">
+                <label for="new_password">New Password</label>
+                <input type="password" id="new_password" name="new_password" class="form-control" 
+                       placeholder="Enter new password (optional)">
+            </div>
+        </div>
+        
+        <!-- Read-only Academic Info -->
+        <div class="form-section readonly-section">
+            <h2>📚 Academic Information (Read-only)</h2>
+            <p class="info-text">These fields are managed by admin only</p>
+            
+            <div class="readonly-grid">
+                <div class="readonly-item">
+                    <span class="label">Roll Number:</span>
+                    <span class="value">{{ student.roll_number }}</span>
+                </div>
+                <div class="readonly-item">
+                    <span class="label">CGPA:</span>
+                    <span class="value">{{ student.cgpa if student.cgpa else 'N/A' }}</span>
+                </div>
+                <div class="readonly-item">
+                    <span class="label">Attendance:</span>
+                    <span class="value">{{ student.attendance_percentage if student.attendance_percentage else 'N/A' }}%</span>
+                </div>
+                <div class="readonly-item">
+                    <span class="label">Semester:</span>
+                    <span class="value">{{ student.semester if student.semester else 'N/A' }}</span>
+                </div>
+                <div class="readonly-item">
+                    <span class="label">Branch:</span>
+                    <span class="value">{{ student.branch if student.branch else 'N/A' }}</span>
+                </div>
+            </div>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+    </form>
+</div>
+
+<style>
+    .edit-profile-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    
+    .profile-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+    
+    .profile-header h1 {
+        color: #2c3e50;
+        margin: 0;
+    }
+    
+    .btn {
+        padding: 10px 20px;
+        border-radius: 5px;
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.3s;
+        border: none;
+        cursor: pointer;
+    }
+    
+    .btn-primary {
+        background: #3498db;
+        color: white;
+        font-size: 16px;
+    }
+    
+    .btn-primary:hover {
+        background: #2980b9;
+    }
+    
+    .btn-secondary {
+        background: #95a5a6;
+        color: white;
+    }
+    
+    .btn-secondary:hover {
+        background: #7f8c8d;
+    }
+    
+    .profile-form {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        padding: 30px;
+    }
+    
+    .form-section {
+        margin-bottom: 35px;
+        padding-bottom: 35px;
+        border-bottom: 1px solid #ecf0f1;
+    }
+    
+    .form-section:last-of-type {
+        border-bottom: none;
+    }
+    
+    .form-section h2 {
+        color: #2c3e50;
+        margin-top: 0;
+        margin-bottom: 20px;
+        font-size: 20px;
+    }
+    
+    .info-text {
+        color: #7f8c8d;
+        font-size: 14px;
+        margin-bottom: 15px;
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        color: #2c3e50;
+        font-weight: 500;
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 14px;
+        box-sizing: border-box;
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-color: #3498db;
+    }
+    
+    .readonly-section {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+    }
+    
+    .readonly-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+    }
+    
+    .readonly-item {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+    
+    .readonly-item .label {
+        color: #7f8c8d;
+        font-size: 13px;
+    }
+    
+    .readonly-item .value {
+        color: #2c3e50;
+        font-weight: 600;
+        font-size: 16px;
+    }
+</style>
+{% endblock %}

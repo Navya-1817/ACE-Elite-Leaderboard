@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+
+{% block title %}All Applications - Admin{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1>📝 All Student Applications</h1>
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
+    </div>
+
+    <!-- Statistics Overview -->
+    <div class="stats-summary">
+        <div class="stat-box">
+            <span class="stat-value">{{ stats.total }}</span>
+            <span class="stat-label">Total</span>
+        </div>
+        <div class="stat-box">
+            <span class="stat-value">{{ stats.applied }}</span>
+            <span class="stat-label">Applied</span>
+        </div>
+        <div class="stat-box warning">
+            <span class="stat-value">{{ stats.pending }}</span>
+            <span class="stat-label">Pending</span>
+        </div>
+        <div class="stat-box success">
+            <span class="stat-value">{{ stats.accepted }}</span>
+            <span class="stat-label">Accepted</span>
+        </div>
+        <div class="stat-box danger">
+            <span class="stat-value">{{ stats.rejected }}</span>
+            <span class="stat-label">Rejected</span>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters">
+        <form method="GET" class="filter-form">
+            <div class="filter-group">
+                <label for="status">Status</label>
+                <select name="status" id="status" onchange="this.form.submit()">
+                    <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All Status</option>
+                    <option value="applied" {% if status_filter == 'applied' %}selected{% endif %}>Applied</option>
+                    <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+                    <option value="accepted" {% if status_filter == 'accepted' %}selected{% endif %}>Accepted</option>
+                    <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="search">Search</label>
+                <input type="text" name="search" id="search" placeholder="Student, Company, Position" value="{{ search }}">
+            </div>
+
+            <button type="submit" class="btn btn-primary">Apply</button>
+            {% if search or status_filter != 'all' %}
+            <a href="{{ url_for('admin_applications') }}" class="btn btn-secondary">Clear</a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Applications Table -->
+    {% if applications %}
+    <div class="card">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Student</th>
+                    <th>Roll No</th>
+                    <th>Company</th>
+                    <th>Position</th>
+                    <th>Applied Date</th>
+                    <th>Status</th>
+                    <th>Type</th>
+                    <th>Package</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for app, student in applications %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('student_profile', student_id=student.id) }}">{{ student.name }}</a>
+                    </td>
+                    <td>{{ student.roll_number }}</td>
+                    <td><strong>{{ app.company_name }}</strong></td>
+                    <td>{{ app.position }}</td>
+                    <td>{{ app.application_date.strftime('%b %d, %Y') }}</td>
+                    <td>
+                        <span class="badge badge-{{ app.status }}">{{ app.status|upper }}</span>
+                    </td>
+                    <td>{{ app.job_type|title if app.job_type else '—' }}</td>
+                    <td>{{ app.package_offered if app.package_offered else '—' }}</td>
+                    <td>
+                        <button class="btn btn-sm btn-edit" onclick="editApplication({{ app.id }}, '{{ app.company_name }}', '{{ app.position }}', '{{ app.application_date.strftime('%Y-%m-%d') }}', '{{ app.status }}', '{{ app.job_type }}', '{{ app.location }}', '{{ app.package_offered }}', '{{ app.notes }}')">Edit</button>
+                        <form method="POST" action="{{ url_for('admin_delete_application', app_id=app.id) }}" style="display:inline;" onsubmit="return confirm('Delete this application?');">
+                            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>No applications found matching your criteria.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Edit Modal -->
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <h2>Edit Application</h2>
+        <form method="POST" id="editForm">
+            <div class="form-group">
+                <label>Company Name</label>
+                <input type="text" name="company_name" id="edit_company" required>
+            </div>
+            <div class="form-group">
+                <label>Position</label>
+                <input type="text" name="position" id="edit_position" required>
+            </div>
+            <div class="form-group">
+                <label>Application Date</label>
+                <input type="date" name="application_date" id="edit_date" required>
+            </div>
+            <div class="form-group">
+                <label>Status</label>
+                <select name="status" id="edit_status">
+                    <option value="applied">Applied</option>
+                    <option value="pending">Pending</option>
+                    <option value="accepted">Accepted</option>
+                    <option value="rejected">Rejected</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Job Type</label>
+                <input type="text" name="job_type" id="edit_job_type">
+            </div>
+            <div class="form-group">
+                <label>Location</label>
+                <input type="text" name="location" id="edit_location">
+            </div>
+            <div class="form-group">
+                <label>Package</label>
+                <input type="text" name="package_offered" id="edit_package">
+            </div>
+            <div class="form-group">
+                <label>Notes</label>
+                <textarea name="notes" id="edit_notes" rows="3"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Update</button>
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        </form>
+    </div>
+</div>
+
+<script>
+function editApplication(id, company, position, date, status, jobType, location, packageOff, notes) {
+    document.getElementById('editForm').action = `/admin/application/${id}/edit`;
+    document.getElementById('edit_company').value = company;
+    document.getElementById('edit_position').value = position;
+    document.getElementById('edit_date').value = date;
+    document.getElementById('edit_status').value = status;
+    document.getElementById('edit_job_type').value = jobType !== 'None' ? jobType : '';
+    document.getElementById('edit_location').value = location !== 'None' ? location : '';
+    document.getElementById('edit_package').value = packageOff !== 'None' ? packageOff : '';
+    document.getElementById('edit_notes').value = notes !== 'None' ? notes : '';
+    document.getElementById('editModal').style.display = 'block';
+}
+
+function closeModal() {
+    document.getElementById('editModal').style.display = 'none';
+}
+
+window.onclick = function(event) {
+    const modal = document.getElementById('editModal');
+    if (event.target == modal) {
+        closeModal();
+    }
+}
+</script>
+
+<style>
+.stats-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin: 2rem 0;
+}
+
+.stat-box {
+    background: #f5f5f5;
+    padding: 1.5rem;
+    border-radius: 8px;
+    text-align: center;
+    border-left: 4px solid #666;
+}
+
+.stat-box.success {
+    border-left-color: #28a745;
+    background: #d4edda;
+}
+
+.stat-box.warning {
+    border-left-color: #ffc107;
+    background: #fff3cd;
+}
+
+.stat-box.danger {
+    border-left-color: #dc3545;
+    background: #f8d7da;
+}
+
+.stat-box .stat-value {
+    display: block;
+    font-size: 2rem;
+    font-weight: bold;
+    color: #333;
+}
+
+.stat-box .stat-label {
+    display: block;
+    font-size: 0.9rem;
+    color: #666;
+    margin-top: 0.25rem;
+}
+
+.table {
+    width: 100%;
+    font-size: 0.9rem;
+}
+
+.table a {
+    color: var(--primary);
+    text-decoration: none;
+}
+
+.table a:hover {
+    text-decoration: underline;
+}
+
+.badge-applied {
+    background: #6c757d;
+}
+
+.badge-pending {
+    background: #ffc107;
+    color: #000;
+}
+
+.badge-accepted {
+    background: #28a745;
+}
+
+.badge-rejected {
+    background: #dc3545;
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.4);
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 5% auto;
+    padding: 2rem;
+    border: 1px solid #888;
+    width: 90%;
+    max-width: 600px;
+    border-radius: 8px;
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover,
+.close:focus {
+    color: #000;
+}
+
+.modal-content .form-group {
+    margin-bottom: 1rem;
+}
+
+.modal-content .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.modal-content .form-group input,
+.modal-content .form-group select,
+.modal-content .form-group textarea {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.btn-edit {
+    background-color: #3b82f6;
+    color: white;
+}
+
+.btn-edit:hover {
+    background-color: #2563eb;
+}
+</style>
+{% endblock %}

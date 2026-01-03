@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Certification - ACE Elite Leaderboard{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="form-container">
+        <h2>Edit Certification</h2>
+        
+        <form method="POST" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="name">Certification Name *</label>
+                <input type="text" id="name" name="name" value="{{ certification.name }}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="issuing_organization">Issuing Organization *</label>
+                <input type="text" id="issuing_organization" name="issuing_organization" value="{{ certification.issuing_organization }}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="issue_date">Issue Date *</label>
+                <input type="date" id="issue_date" name="issue_date" value="{{ certification.issue_date }}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="expiry_date">Expiry Date</label>
+                <input type="date" id="expiry_date" name="expiry_date" value="{{ certification.expiry_date or '' }}">
+                <small>Leave empty if certification doesn't expire</small>
+            </div>
+
+            <div class="form-group">
+                <label for="credential_id">Credential ID</label>
+                <input type="text" id="credential_id" name="credential_id" value="{{ certification.credential_id or '' }}">
+            </div>
+
+            <div class="form-group">
+                <label for="credential_url">Credential URL</label>
+                <input type="url" id="credential_url" name="credential_url" value="{{ certification.credential_url or '' }}" placeholder="https://...">
+            </div>
+
+            <div class="form-group">
+                <label for="skills">Skills</label>
+                <input type="text" id="skills" name="skills" value="{{ certification.skills or '' }}" placeholder="e.g., Python, Machine Learning, Data Analysis">
+            </div>
+
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea id="description" name="description" rows="4">{{ certification.description or '' }}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="certificate_file">Certificate File (PDF/Image)</label>
+                {% if certification.certificate_file_url %}
+                    <p style="font-size: 0.9em; color: #666; margin-bottom: 5px;">
+                        Current: <a href="{{ certification.certificate_file_url }}" target="_blank">View Certificate</a>
+                    </p>
+                {% endif %}
+                <input type="file" id="certificate_file" name="certificate_file" accept=".pdf,.png,.jpg,.jpeg">
+                <small>Leave empty to keep existing file</small>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Update Certification</button>
+                <a href="{{ url_for('student_my_certifications') }}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .form-container {
+        max-width: 800px;
+        margin: 2rem auto;
+        background: white;
+        padding: 2rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        color: #333;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 1rem;
+    }
+
+    .form-group textarea {
+        resize: vertical;
+    }
+
+    .form-group small {
+        display: block;
+        margin-top: 0.25rem;
+        color: #666;
+        font-size: 0.9em;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+    }
+
+    .btn {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 4px;
+        font-size: 1rem;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+        text-align: center;
+    }
+
+    .btn-primary {
+        background: #2563eb;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #1d4ed8;
+    }
+
+    .btn-secondary {
+        background: #6b7280;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background: #4b5563;
+    }
+</style>
+{% endblock %}

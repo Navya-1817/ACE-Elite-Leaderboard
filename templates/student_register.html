@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Student Registration - ACE Elite{% endblock %}
+
+{% block content %}
+<div class="register-container">
+    <div class="register-box">
+        <h1>📝 Student Registration</h1>
+        <p class="subtitle">Join the CP Tracker - Stats fetched automatically!</p>
+        
+        <form method="POST" class="form">
+            <div class="form-group">
+                <label for="name">Full Name *</label>
+                <input type="text" id="name" name="name" required autofocus>
+            </div>
+            
+            <div class="form-group">
+                <label for="roll_number">Roll Number / ID *</label>
+                <input type="text" id="roll_number" name="roll_number" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Email *</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password *</label>
+                <input type="password" id="password" name="password" required minlength="6">
+                <small class="form-hint">Minimum 6 characters</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="confirm_password">Confirm Password *</label>
+                <input type="password" id="confirm_password" name="confirm_password" required minlength="6">
+            </div>
+            
+            <div class="form-divider">
+                <span>Platform Usernames</span>
+                <small>(Provide at least one)</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="cf_handle">🔵 Codeforces Handle</label>
+                <input type="text" id="cf_handle" name="cf_handle" placeholder="e.g., tourist">
+                <small class="form-hint">Your Codeforces username</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="lc_username">🟡 LeetCode Username</label>
+                <input type="text" id="lc_username" name="lc_username" placeholder="e.g., coding_master">
+                <small class="form-hint">Your LeetCode username</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="cc_username">🟤 CodeChef Username</label>
+                <input type="text" id="cc_username" name="cc_username" placeholder="e.g., code_ninja">
+                <small class="form-hint">Your CodeChef username</small>
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-block">Register & Fetch Stats</button>
+        </form>
+        
+        <div class="register-footer">
+            <p>Already registered? <a href="{{ url_for('student_login') }}">Login here</a></p>
+            <p class="text-muted">Stats will be fetched automatically within 24 hours</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

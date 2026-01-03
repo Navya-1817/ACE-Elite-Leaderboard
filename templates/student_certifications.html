@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+
+{% block title %}{{ student.name }} - Certifications{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1>🎓 Certifications</h1>
+        <p class="subtitle">{{ student.name }} ({{ student.roll_number }})</p>
+        <a href="{{ url_for('student_profile', student_id=student.id) }}" class="btn btn-secondary">← Back to Profile</a>
+    </div>
+
+    <!-- Add New Certification Form -->
+    <div class="card">
+        <h2>Add New Certification</h2>
+        <form method="POST" class="form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="name">Certification Name *</label>
+                    <input type="text" id="name" name="name" required placeholder="e.g., AWS Certified Solutions Architect">
+                </div>
+                <div class="form-group">
+                    <label for="issuing_organization">Issuing Organization *</label>
+                    <input type="text" id="issuing_organization" name="issuing_organization" required placeholder="e.g., Amazon Web Services">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="issue_date">Issue Date *</label>
+                    <input type="date" id="issue_date" name="issue_date" required>
+                </div>
+                <div class="form-group">
+                    <label for="expiry_date">Expiry Date (if applicable)</label>
+                    <input type="date" id="expiry_date" name="expiry_date">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="credential_id">Credential ID</label>
+                    <input type="text" id="credential_id" name="credential_id" placeholder="Certificate ID or number">
+                </div>
+                <div class="form-group">
+                    <label for="credential_url">Credential URL</label>
+                    <input type="url" id="credential_url" name="credential_url" placeholder="https://...">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="skills">Skills Covered</label>
+                <input type="text" id="skills" name="skills" placeholder="e.g., Cloud Computing, Docker, Kubernetes">
+            </div>
+
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea id="description" name="description" rows="3" placeholder="Brief description of what this certification covers"></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Add Certification</button>
+        </form>
+    </div>
+
+    <!-- Certifications List -->
+    <div class="certifications-list">
+        <h2>My Certifications ({{ certifications|length }})</h2>
+        
+        {% if certifications %}
+            {% for cert in certifications %}
+            <div class="card cert-card">
+                <div class="cert-header">
+                    <div class="cert-icon">🎓</div>
+                    <div class="cert-info">
+                        <h3>{{ cert.name }}</h3>
+                        <p class="cert-org">{{ cert.issuing_organization }}</p>
+                    </div>
+                </div>
+                
+                <div class="cert-details">
+                    <div class="detail-row">
+                        <div class="detail-item">
+                            <strong>Issued:</strong> {{ cert.issue_date.strftime('%B %Y') }}
+                        </div>
+                        {% if cert.expiry_date %}
+                        <div class="detail-item">
+                            <strong>Expires:</strong> {{ cert.expiry_date.strftime('%B %Y') }}
+                            {% if cert.expiry_date < today %}
+                            <span class="badge badge-danger">Expired</span>
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <div class="detail-item">
+                            <span class="badge badge-success">No Expiration</span>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    {% if cert.credential_id %}
+                    <div class="detail-item">
+                        <strong>Credential ID:</strong> {{ cert.credential_id }}
+                    </div>
+                    {% endif %}
+
+                    {% if cert.credential_url %}
+                    <div class="detail-item">
+                        <a href="{{ cert.credential_url }}" target="_blank" class="btn btn-sm btn-secondary">🔗 View Certificate</a>
+                    </div>
+                    {% endif %}
+
+                    {% if cert.skills %}
+                    <div class="cert-skills">
+                        <strong>Skills:</strong>
+                        {% for skill in cert.skills.split(',') %}
+                        <span class="skill-tag">{{ skill.strip() }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    {% if cert.description %}
+                    <div class="cert-description">
+                        <p>{{ cert.description }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="cert-actions">
+                    <form method="POST" action="{{ url_for('delete_certification', student_id=student.id, cert_id=cert.id) }}" onsubmit="return confirm('Are you sure you want to delete this certification?');">
+                        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <p>📜 No certifications recorded yet. Add your first certification above!</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.cert-card {
+    margin-bottom: 1rem;
+}
+
+.cert-header {
+    display: flex;
+    gap: 1rem;
+    align-items: start;
+    margin-bottom: 1rem;
+}
+
+.cert-icon {
+    font-size: 2.5rem;
+    flex-shrink: 0;
+}
+
+.cert-info h3 {
+    margin: 0;
+    color: #333;
+}
+
+.cert-org {
+    color: #666;
+    margin: 0.25rem 0 0 0;
+    font-weight: 500;
+}
+
+.cert-details {
+    margin: 1rem 0;
+}
+
+.detail-row {
+    display: flex;
+    gap: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.detail-item {
+    font-size: 0.9rem;
+    margin: 0.5rem 0;
+}
+
+.detail-item strong {
+    color: #555;
+}
+
+.cert-skills {
+    margin: 1rem 0;
+}
+
+.skill-tag {
+    display: inline-block;
+    background: #e9ecef;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    margin: 0.25rem 0.25rem 0.25rem 0;
+    color: #495057;
+}
+
+.cert-description {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 4px;
+    margin: 1rem 0;
+}
+
+.cert-description p {
+    margin: 0;
+    color: #666;
+}
+
+.cert-actions {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+}
+
+.badge-success {
+    background: #28a745;
+}
+
+.badge-danger {
+    background: #dc3545;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+@media (max-width: 768px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    .detail-row {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date().toISOString().split('T')[0];
+    const issueDateInput = document.getElementById('issue_date');
+    const expiryDateInput = document.getElementById('expiry_date');
+    
+    issueDateInput.max = today;
+    
+    issueDateInput.addEventListener('change', function() {
+        expiryDateInput.min = this.value;
+    });
+});
+</script>
+{% endblock %}

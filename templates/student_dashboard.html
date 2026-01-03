@@ -1,0 +1,351 @@
+{% extends "base.html" %}
+
+{% block title %}My Dashboard - {{ student.name }}{% endblock %}
+
+{% block content %}
+<div class="student-dashboard">
+    <div class="dashboard-header">
+        <div>
+            <h1>Welcome, {{ student.name }}!</h1>
+            <p class="roll-number">{{ student.roll_number }}</p>
+        </div>
+        <div class="header-actions">
+            <a href="{{ url_for('student_edit_profile') }}" class="btn btn-primary">Edit Profile</a>
+            <a href="{{ url_for('student_logout') }}" class="btn btn-secondary">Logout</a>
+        </div>
+    </div>
+    
+    <!-- Academic Info (Read-only) -->
+    <div class="academic-card">
+        <h3>📚 Academic Information</h3>
+        <div class="academic-grid">
+            <div class="academic-item">
+                <span class="label">CGPA:</span>
+                <span class="value">{{ student.cgpa if student.cgpa else 'N/A' }}</span>
+            </div>
+            <div class="academic-item">
+                <span class="label">Attendance:</span>
+                <span class="value">{{ student.attendance_percentage if student.attendance_percentage else 'N/A' }}%</span>
+            </div>
+            <div class="academic-item">
+                <span class="label">Semester:</span>
+                <span class="value">{{ student.semester if student.semester else 'N/A' }}</span>
+            </div>
+            <div class="academic-item">
+                <span class="label">Branch:</span>
+                <span class="value">{{ student.branch if student.branch else 'N/A' }}</span>
+            </div>
+        </div>
+        <p class="note">📝 Academic data is managed by admin</p>
+    </div>
+    
+    <!-- Career Stats -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">📋</div>
+            <div class="stat-info">
+                <h3>{{ app_count }}</h3>
+                <p>Applications</p>
+            </div>
+            <a href="{{ url_for('student_my_applications') }}" class="stat-link">Manage →</a>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">🏆</div>
+            <div class="stat-info">
+                <h3>{{ cert_count }}</h3>
+                <p>Certifications</p>
+            </div>
+            <a href="{{ url_for('student_my_certifications') }}" class="stat-link">Manage →</a>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">💼</div>
+            <div class="stat-info">
+                <h3>{{ intern_count }}</h3>
+                <p>Internships</p>
+            </div>
+            <a href="{{ url_for('student_my_internships') }}" class="stat-link">Manage →</a>
+        </div>
+    </div>
+    
+    <!-- Coding Stats -->
+    <div class="coding-stats">
+        <h2>📊 Coding Performance</h2>
+        
+        {% if student.cf_handle %}
+        <div class="chart-card">
+            <h3>Codeforces Rating</h3>
+            <canvas id="cfChart"></canvas>
+        </div>
+        {% endif %}
+        
+        {% if student.lc_username %}
+        <div class="chart-card">
+            <h3>LeetCode Progress</h3>
+            <canvas id="lcChart"></canvas>
+        </div>
+        {% endif %}
+        
+        {% if student.cc_username %}
+        <div class="chart-card">
+            <h3>CodeChef Rating</h3>
+            <canvas id="ccChart"></canvas>
+        </div>
+        {% endif %}
+        
+        {% if not student.cf_handle and not student.lc_username and not student.cc_username %}
+        <p class="no-data">No coding handles configured. <a href="{{ url_for('student_edit_profile') }}">Add them now</a></p>
+        {% endif %}
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Codeforces Chart
+    {% if cf_history %}
+    const cfCtx = document.getElementById('cfChart').getContext('2d');
+    new Chart(cfCtx, {
+        type: 'line',
+        data: {
+            labels: {{ cf_history|map(attribute='date')|list|tojson }},
+            datasets: [{
+                label: 'Rating',
+                data: {{ cf_history|map(attribute='value')|list|tojson }},
+                borderColor: '#e74c3c',
+                backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            aspectRatio: 2
+        }
+    });
+    {% endif %}
+    
+    // LeetCode Chart
+    {% if lc_history %}
+    const lcCtx = document.getElementById('lcChart').getContext('2d');
+    new Chart(lcCtx, {
+        type: 'line',
+        data: {
+            labels: {{ lc_history|map(attribute='date')|list|tojson }},
+            datasets: [{
+                label: 'Problems Solved',
+                data: {{ lc_history|map(attribute='value')|list|tojson }},
+                borderColor: '#f39c12',
+                backgroundColor: 'rgba(243, 156, 18, 0.1)',
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            aspectRatio: 2
+        }
+    });
+    {% endif %}
+    
+    // CodeChef Chart
+    {% if cc_history %}
+    const ccCtx = document.getElementById('ccChart').getContext('2d');
+    new Chart(ccCtx, {
+        type: 'line',
+        data: {
+            labels: {{ cc_history|map(attribute='date')|list|tojson }},
+            datasets: [{
+                label: 'Rating',
+                data: {{ cc_history|map(attribute='value')|list|tojson }},
+                borderColor: '#8e44ad',
+                backgroundColor: 'rgba(142, 68, 173, 0.1)',
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            aspectRatio: 2
+        }
+    });
+    {% endif %}
+</script>
+
+<style>
+    .student-dashboard {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+    
+    .dashboard-header h1 {
+        color: #2c3e50;
+        margin: 0;
+    }
+    
+    .roll-number {
+        color: #7f8c8d;
+        margin: 5px 0 0 0;
+    }
+    
+    .header-actions {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .btn {
+        padding: 10px 20px;
+        border-radius: 5px;
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.3s;
+    }
+    
+    .btn-primary {
+        background: #3498db;
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        background: #2980b9;
+    }
+    
+    .btn-secondary {
+        background: #95a5a6;
+        color: white;
+    }
+    
+    .btn-secondary:hover {
+        background: #7f8c8d;
+    }
+    
+    .academic-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 10px;
+        padding: 25px;
+        margin-bottom: 30px;
+    }
+    
+    .academic-card h3 {
+        margin-top: 0;
+        margin-bottom: 20px;
+    }
+    
+    .academic-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+    
+    .academic-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 5px;
+    }
+    
+    .academic-item .label {
+        font-weight: 500;
+    }
+    
+    .academic-item .value {
+        font-size: 18px;
+        font-weight: bold;
+    }
+    
+    .note {
+        font-size: 13px;
+        opacity: 0.9;
+        margin: 10px 0 0 0;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .stat-card {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    
+    .stat-icon {
+        font-size: 40px;
+    }
+    
+    .stat-info h3 {
+        font-size: 32px;
+        margin: 0;
+        color: #2c3e50;
+    }
+    
+    .stat-info p {
+        margin: 5px 0 0 0;
+        color: #7f8c8d;
+    }
+    
+    .stat-link {
+        margin-left: auto;
+        color: #3498db;
+        text-decoration: none;
+        font-weight: 500;
+    }
+    
+    .stat-link:hover {
+        text-decoration: underline;
+    }
+    
+    .coding-stats h2 {
+        color: #2c3e50;
+        margin-bottom: 20px;
+    }
+    
+    .chart-card {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .chart-card h3 {
+        margin-top: 0;
+        color: #2c3e50;
+    }
+    
+    .no-data {
+        text-align: center;
+        padding: 40px;
+        color: #7f8c8d;
+        background: white;
+        border-radius: 10px;
+    }
+    
+    .no-data a {
+        color: #3498db;
+        text-decoration: none;
+        font-weight: 500;
+    }
+</style>
+{% endblock %}

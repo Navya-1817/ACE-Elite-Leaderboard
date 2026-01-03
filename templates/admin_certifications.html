@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}All Certifications - Admin{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1>🎓 All Student Certifications</h1>
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
+    </div>
+
+    <!-- Statistics Overview -->
+    <div class="overview-section">
+        <div class="overview-card">
+            <h3>Total Certifications</h3>
+            <p class="big-number">{{ total_count }}</p>
+        </div>
+
+        <div class="overview-card">
+            <h3>Top Certifying Organizations</h3>
+            <ul class="top-list">
+                {% for org, count in popular_certs[:5] %}
+                <li>
+                    <span class="org-name">{{ org }}</span>
+                    <span class="badge">{{ count }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters">
+        <form method="GET" class="filter-form">
+            <div class="filter-group">
+                <label for="search">Search</label>
+                <input type="text" name="search" id="search" placeholder="Student, Certification, Organization" value="{{ search }}">
+            </div>
+
+            <button type="submit" class="btn btn-primary">Apply</button>
+            {% if search %}
+            <a href="{{ url_for('admin_certifications') }}" class="btn btn-secondary">Clear</a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Certifications Table -->
+    {% if certifications %}
+    <div class="card">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Student</th>
+                    <th>Roll No</th>
+                    <th>Certification</th>
+                    <th>Organization</th>
+                    <th>Issue Date</th>
+                    <th>Expiry</th>
+                    <th>Credential</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cert, student in certifications %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('student_profile', student_id=student.id) }}">{{ student.name }}</a>
+                    </td>
+                    <td>{{ student.roll_number }}</td>
+                    <td><strong>{{ cert.name }}</strong></td>
+                    <td>{{ cert.issuing_organization }}</td>
+                    <td>{{ cert.issue_date.strftime('%b %Y') }}</td>
+                    <td>
+                        {% if cert.expiry_date %}
+                            {{ cert.expiry_date.strftime('%b %Y') }}
+                            {% if cert.expiry_date < today %}
+                            <span class="badge badge-danger">Expired</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="badge badge-success">No Expiry</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if cert.credential_url %}
+                        <a href="{{ cert.credential_url }}" target="_blank" class="btn btn-sm">🔗 View</a>
+                        {% elif cert.credential_id %}
+                        {{ cert.credential_id }}
+                        {% else %}
+                        —
+                        {% endif %}
+                    </td>
+                    <td>
+                        <form method="POST" action="{{ url_for('admin_delete_certification', cert_id=cert.id) }}" style="display:inline;" onsubmit="return confirm('Delete this certification?');">
+                            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>No certifications found matching your criteria.</p>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.overview-section {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 1.5rem;
+    margin: 2rem 0;
+}
+
+.overview-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.overview-card h3 {
+    margin-bottom: 1rem;
+    color: #333;
+}
+
+.big-number {
+    font-size: 3rem;
+    font-weight: bold;
+    color: var(--primary);
+    margin: 0;
+}
+
+.top-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.top-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #eee;
+}
+
+.top-list li:last-child {
+    border-bottom: none;
+}
+
+.org-name {
+    font-weight: 500;
+    color: #333;
+}
+
+.table {
+    width: 100%;
+    font-size: 0.9rem;
+}
+
+.table a {
+    color: var(--primary);
+    text-decoration: none;
+}
+
+.table a:hover {
+    text-decoration: underline;
+}
+
+.badge-success {
+    background: #28a745;
+}
+
+.badge-danger {
+    background: #dc3545;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-danger:hover {
+    background-color: #c82333;
+}
+
+@media (max-width: 768px) {
+    .overview-section {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}

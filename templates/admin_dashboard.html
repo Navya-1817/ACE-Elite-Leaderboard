@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - ACE Elite{% endblock %}
+
+{% block content %}
+<style>
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    
+    .btn-import {
+        background: #10b981;
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.2s;
+        box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+    }
+    
+    .btn-import:hover {
+        background: #059669;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+    }
+</style>
+<div class="dashboard">
+    <div class="dashboard-header">
+        <div>
+            <h1>📊 Admin Dashboard</h1>
+            <p class="subtitle">Total Students: {{ total_students }}</p>
+        </div>
+        <a href="{{ url_for('admin_import_students') }}" class="btn btn-import">📤 Import Students (Excel)</a>
+    </div>
+
+    <!-- Career Tracking Stats Cards -->
+    <div class="stats-cards">
+        <a href="{{ url_for('admin_applications') }}" class="stat-card card-applications">
+            <div class="stat-icon">📝</div>
+            <div class="stat-info">
+                <h3>{{ total_applications }}</h3>
+                <p>Applications</p>
+                <small>{{ total_accepted }} Accepted</small>
+            </div>
+        </a>
+        
+        <a href="{{ url_for('admin_certifications') }}" class="stat-card card-certifications">
+            <div class="stat-icon">🎓</div>
+            <div class="stat-info">
+                <h3>{{ total_certifications }}</h3>
+                <p>Certifications</p>
+                <small>Earned by students</small>
+            </div>
+        </a>
+        
+        <a href="{{ url_for('admin_internships') }}" class="stat-card card-internships">
+            <div class="stat-icon">💼</div>
+            <div class="stat-info">
+                <h3>{{ total_internships }}</h3>
+                <p>Internships</p>
+                <small>Completed & Ongoing</small>
+            </div>
+        </a>
+    </div>
+
+    <h2 style="margin-top: 2rem;">CP Leaderboard</h2>
+
+    <div class="filters">
+        <form method="GET" class="filter-form">
+            <div class="filter-group">
+                <label for="platform">Platform</label>
+                <select name="platform" id="platform" onchange="this.form.submit()">
+                    <option value="all" {% if platform == 'all' %}selected{% endif %}>All Platforms</option>
+                    <option value="CF" {% if platform == 'CF' %}selected{% endif %}>Codeforces</option>
+                    <option value="LC" {% if platform == 'LC' %}selected{% endif %}>LeetCode</option>
+                    <option value="CC" {% if platform == 'CC' %}selected{% endif %}>CodeChef</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="sort">Sort By</label>
+                <select name="sort" id="sort" onchange="this.form.submit()">
+                    <option value="rating" {% if sort_by == 'rating' %}selected{% endif %}>Rating</option>
+                    <option value="solved" {% if sort_by == 'solved' %}selected{% endif %}>Solved</option>
+                    {% if platform == 'LC' %}
+                    <option value="hard" {% if sort_by == 'hard' %}selected{% endif %}>Hard Problems</option>
+                    {% endif %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="search">Search</label>
+                <input type="text" name="search" id="search" placeholder="Name or Roll No" value="{{ search }}">
+            </div>
+
+            <button type="submit" class="btn btn-primary">Apply</button>
+            {% if search or platform != 'all' %}
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">Clear</a>
+            {% endif %}
+        </form>
+    </div>
+
+    <div class="leaderboard">
+        {% if leaderboard %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Name</th>
+                    <th>Roll No</th>
+                    {% if platform == 'all' or platform == 'CF' %}
+                    <th>CF Rating</th>
+                    <th>CF Solved</th>
+                    {% endif %}
+                    {% if platform == 'all' or platform == 'LC' %}
+                    <th>LC Total</th>
+                    <th>LC Breakdown</th>
+                    {% endif %}
+                    {% if platform == 'all' or platform == 'CC' %}
+                    <th>CC Rating</th>
+                    <th>CC Solved</th>
+                    {% endif %}
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for student in leaderboard %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td class="student-name">{{ student.name }}</td>
+                    <td>{{ student.roll_number }}</td>
+                    
+                    {% if platform == 'all' or platform == 'CF' %}
+                    <td>
+                        {% if student.cf_stats %}
+                            <span class="badge badge-rating">{{ student.cf_stats.rating }}</span>
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if student.cf_stats %}
+                            {{ student.cf_stats.solved }}
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    {% endif %}
+                    
+                    {% if platform == 'all' or platform == 'LC' %}
+                    <td>
+                        {% if student.lc_stats %}
+                            {{ student.lc_stats.solved }}
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if student.lc_stats %}
+                            <span class="badge badge-easy">E:{{ student.lc_stats.easy }}</span>
+                            <span class="badge badge-medium">M:{{ student.lc_stats.medium }}</span>
+                            <span class="badge badge-hard">H:{{ student.lc_stats.hard }}</span>
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    {% endif %}
+                    
+                    {% if platform == 'all' or platform == 'CC' %}
+                    <td>
+                        {% if student.cc_stats %}
+                            <span class="badge badge-rating">{{ student.cc_stats.rating }}</span>
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if student.cc_stats %}
+                            {{ student.cc_stats.solved }}
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    {% endif %}
+                    
+                    <td>
+                        <a href="{{ url_for('student_profile', student_id=student.id) }}" class="btn btn-sm">View Profile</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <h3>No students found</h3>
+            <p>No students match your filters or no data available yet.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if total_pages > 1 %}
+    <div class="pagination">
+        {% if page > 1 %}
+        <a href="?platform={{ platform }}&sort={{ sort_by }}&search={{ search }}&page={{ page - 1 }}" class="btn btn-secondary">← Previous</a>
+        {% endif %}
+        
+        <span class="pagination-info">Page {{ page }} of {{ total_pages }} ({{ total_students }} students)</span>
+        
+        {% if page < total_pages %}
+        <a href="?platform={{ platform }}&sort={{ sort_by }}&search={{ search }}&page={{ page + 1 }}" class="btn btn-secondary">Next →</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

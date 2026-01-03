@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}Student Login - ACE Elite Leaderboard{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-header">
+            <h2>Student Login</h2>
+            <p>Access your coding profile and career records</p>
+        </div>
+        
+        <form method="POST" class="auth-form">
+            <div class="form-group">
+                <label for="roll_number">Roll Number</label>
+                <input type="text" 
+                       id="roll_number" 
+                       name="roll_number" 
+                       class="form-control" 
+                       required 
+                       placeholder="Enter your roll number">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" 
+                       id="password" 
+                       name="password" 
+                       class="form-control" 
+                       required 
+                       placeholder="Enter your password">
+            </div>
+            
+            <button type="submit" class="btn btn-primary">Login</button>
+        </form>
+        
+        <div class="auth-footer">
+            <p>Don't have an account? <a href="{{ url_for('student_register') }}">Register here</a></p>
+            <p>Forgot your password? Contact admin</p>
+            <p><a href="{{ url_for('admin_login') }}">Admin Login</a></p>
+        </div>
+    </div>
+</div>
+
+<style>
+    .auth-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: calc(100vh - 100px);
+        padding: 20px;
+    }
+    
+    .auth-card {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        padding: 40px;
+        width: 100%;
+        max-width: 400px;
+    }
+    
+    .auth-header {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+    
+    .auth-header h2 {
+        color: #2c3e50;
+        margin-bottom: 10px;
+    }
+    
+    .auth-header p {
+        color: #7f8c8d;
+        font-size: 14px;
+    }
+    
+    .auth-form .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .auth-form label {
+        display: block;
+        margin-bottom: 5px;
+        color: #2c3e50;
+        font-weight: 500;
+    }
+    
+    .auth-form .form-control {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 14px;
+    }
+    
+    .auth-form .form-control:focus {
+        outline: none;
+        border-color: #3498db;
+    }
+    
+    .auth-form .btn {
+        width: 100%;
+        padding: 12px;
+        background: #3498db;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        font-size: 16px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+    
+    .auth-form .btn:hover {
+        background: #2980b9;
+    }
+    
+    .auth-footer {
+        margin-top: 20px;
+        text-align: center;
+        font-size: 14px;
+        color: #7f8c8d;
+    }
+    
+    .auth-footer a {
+        color: #3498db;
+        text-decoration: none;
+    }
+    
+    .auth-footer a:hover {
+        text-decoration: underline;
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block title %}{{ student.name }} - Profile{% endblock %}
+
+{% block content %}
+<div class="profile">
+    <div class="profile-header">
+        <div>
+            <h1>{{ student.name }}</h1>
+            <p class="subtitle">Roll No: {{ student.roll_number }}</p>
+        </div>
+        <div class="profile-handles">
+            {% if student.cf_handle %}
+            <span class="badge badge-cf">CF: {{ student.cf_handle }}</span>
+            {% endif %}
+            {% if student.lc_username %}
+            <span class="badge badge-lc">LC: {{ student.lc_username }}</span>
+            {% endif %}
+            {% if student.cc_username %}
+            <span class="badge badge-cc">CC: {{ student.cc_username }}</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Navigation Menu -->
+    <div class="profile-nav">
+        <a href="{{ url_for('student_applications', student_id=student.id) }}" class="nav-btn">
+            📝 Applications
+        </a>
+        <a href="{{ url_for('student_certifications', student_id=student.id) }}" class="nav-btn">
+            🎓 Certifications
+        </a>
+        <a href="{{ url_for('student_internships', student_id=student.id) }}" class="nav-btn">
+            💼 Internships
+        </a>
+    </div>
+
+    <div class="profile-stats">
+        {% if student.cf_handle and cf_history %}
+        <div class="profile-stat-card">
+            <h3>🔵 Codeforces</h3>
+            {% set latest = cf_history[-1] %}
+            <div class="stat-summary">
+                <div class="stat-item">
+                    <span class="stat-label">Current Rating</span>
+                    <span class="stat-value">{{ latest.rating or 0 }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Max Rating</span>
+                    <span class="stat-value">{{ latest.max_rating or 0 }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Solved</span>
+                    <span class="stat-value">{{ latest.solved }}</span>
+                </div>
+            </div>
+            <canvas id="cfRatingChart"></canvas>
+        </div>
+        {% endif %}
+
+        {% if student.lc_username and lc_history %}
+        <div class="profile-stat-card">
+            <h3>🟡 LeetCode</h3>
+            {% set latest = lc_history[-1] %}
+            <div class="stat-summary">
+                <div class="stat-item">
+                    <span class="stat-label">Total Solved</span>
+                    <span class="stat-value">{{ latest.solved }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Easy</span>
+                    <span class="stat-value">{{ latest.easy }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Medium</span>
+                    <span class="stat-value">{{ latest.medium }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Hard</span>
+                    <span class="stat-value">{{ latest.hard }}</span>
+                </div>
+            </div>
+            <canvas id="lcDifficultyChart"></canvas>
+            <canvas id="lcProgressChart"></canvas>
+        </div>
+        {% endif %}
+
+        {% if student.cc_username and cc_history %}
+        <div class="profile-stat-card">
+            <h3>🟤 CodeChef</h3>
+            {% set latest = cc_history[-1] %}
+            <div class="stat-summary">
+                <div class="stat-item">
+                    <span class="stat-label">Rating</span>
+                    <span class="stat-value">{{ latest.rating or 0 }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Solved</span>
+                    <span class="stat-value">{{ latest.solved }}</span>
+                </div>
+            </div>
+            <canvas id="ccRatingChart"></canvas>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if not cf_history and not lc_history and not cc_history %}
+    <div class="empty-state">
+        <h3>No data available yet</h3>
+        <p>Stats will be fetched automatically within 24 hours.</p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    const cfHistory = {{ cf_history | tojson }};
+    const lcHistory = {{ lc_history | tojson }};
+    const ccHistory = {{ cc_history | tojson }};
+
+    // Codeforces Rating Chart
+    if (cfHistory.length > 0) {
+        const cfCtx = document.getElementById('cfRatingChart').getContext('2d');
+        new Chart(cfCtx, {
+            type: 'line',
+            data: {
+                labels: cfHistory.map(s => new Date(s.timestamp).toLocaleDateString()),
+                datasets: [{
+                    label: 'Rating',
+                    data: cfHistory.map(s => s.rating),
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    tension: 0.3,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                aspectRatio: 2,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: { beginAtZero: false }
+                }
+            }
+        });
+    }
+
+    // LeetCode Difficulty Breakdown (Pie)
+    if (lcHistory.length > 0) {
+        const latest = lcHistory[lcHistory.length - 1];
+        const lcDiffCtx = document.getElementById('lcDifficultyChart').getContext('2d');
+        new Chart(lcDiffCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Easy', 'Medium', 'Hard'],
+                datasets: [{
+                    data: [latest.easy, latest.medium, latest.hard],
+                    backgroundColor: ['#22c55e', '#eab308', '#ef4444']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                aspectRatio: 1.5,
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+
+        // LeetCode Progress Chart
+        const lcProgCtx = document.getElementById('lcProgressChart').getContext('2d');
+        new Chart(lcProgCtx, {
+            type: 'line',
+            data: {
+                labels: lcHistory.map(s => new Date(s.timestamp).toLocaleDateString()),
+                datasets: [{
+                    label: 'Total Solved',
+                    data: lcHistory.map(s => s.solved),
+                    borderColor: '#eab308',
+                    backgroundColor: 'rgba(234, 179, 8, 0.1)',
+                    tension: 0.3,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                aspectRatio: 2,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    }
+
+    // CodeChef Rating Chart
+    if (ccHistory.length > 0) {
+        const ccCtx = document.getElementById('ccRatingChart').getContext('2d');
+        new Chart(ccCtx, {
+            type: 'line',
+            data: {
+                labels: ccHistory.map(s => new Date(s.timestamp).toLocaleDateString()),
+                datasets: [{
+                    label: 'Rating',
+                    data: ccHistory.map(s => s.rating),
+                    borderColor: '#a0522d',
+                    backgroundColor: 'rgba(160, 82, 45, 0.1)',
+                    tension: 0.3,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                aspectRatio: 2,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: { beginAtZero: false }
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}

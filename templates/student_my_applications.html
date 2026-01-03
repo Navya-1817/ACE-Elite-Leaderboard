@@ -1,0 +1,362 @@
+{% extends "base.html" %}
+
+{% block title %}My Applications - {{ student.name }}{% endblock %}
+
+{% block content %}
+<div class="applications-container">
+    <div class="page-header">
+        <h1>📋 My Applications</h1>
+        <a href="{{ url_for('student_dashboard') }}" class="btn btn-secondary">← Back</a>
+    </div>
+    
+    <!-- Add Application Form -->
+    <div class="add-form-card">
+        <h2>➕ Add New Application</h2>
+        <form method="POST" enctype="multipart/form-data" class="add-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="company_name">Company Name *</label>
+                    <input type="text" id="company_name" name="company_name" class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="position">Position *</label>
+                    <input type="text" id="position" name="position" class="form-control" required>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="application_date">Application Date *</label>
+                    <input type="date" id="application_date" name="application_date" class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="status">Status *</label>
+                    <select id="status" name="status" class="form-control" required>
+                        <option value="applied">Applied</option>
+                        <option value="shortlisted">Shortlisted</option>
+                        <option value="interview">Interview</option>
+                        <option value="offered">Offered</option>
+                        <option value="rejected">Rejected</option>
+                        <option value="accepted">Accepted</option>
+                        <option value="declined">Declined</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="job_type">Job Type</label>
+                    <input type="text" id="job_type" name="job_type" class="form-control" placeholder="e.g., Full-time, Intern">
+                </div>
+                
+                <div class="form-group">
+                    <label for="location">Location</label>
+                    <input type="text" id="location" name="location" class="form-control" placeholder="e.g., Bangalore">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="package_offered">Package Offered</label>
+                    <input type="text" id="package_offered" name="package_offered" class="form-control" placeholder="e.g., 12 LPA">
+                </div>
+                
+                <div class="form-group">
+                    <label for="offer_letter">Upload Offer Letter (PDF/Image)</label>
+                    <input type="file" id="offer_letter" name="offer_letter" class="form-control" accept=".pdf,.png,.jpg,.jpeg">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="notes">Notes</label>
+                <textarea id="notes" name="notes" class="form-control" rows="3" placeholder="Additional notes..."></textarea>
+            </div>
+            
+            <button type="submit" class="btn btn-primary">Add Application</button>
+        </form>
+    </div>
+    
+    <!-- Applications List -->
+    <div class="applications-list">
+        <h2>Your Applications ({{ applications|length }})</h2>
+        
+        {% if applications %}
+            {% for app in applications %}
+            <div class="application-card">
+                <div class="app-header">
+                    <div>
+                        <h3>{{ app.company_name }}</h3>
+                        <p class="position">{{ app.position }}</p>
+                    </div>
+                    <span class="status-badge status-{{ app.status }}">{{ app.status|title }}</span>
+                </div>
+                
+                <div class="app-details">
+                    <div class="detail-item">
+                        <span class="label">📅 Applied:</span>
+                        <span>{{ app.application_date.strftime('%d %b %Y') }}</span>
+                    </div>
+                    
+                    {% if app.job_type %}
+                    <div class="detail-item">
+                        <span class="label">💼 Type:</span>
+                        <span>{{ app.job_type }}</span>
+                    </div>
+                    {% endif %}
+                    
+                    {% if app.location %}
+                    <div class="detail-item">
+                        <span class="label">📍 Location:</span>
+                        <span>{{ app.location }}</span>
+                    </div>
+                    {% endif %}
+                    
+                    {% if app.package_offered %}
+                    <div class="detail-item">
+                        <span class="label">💰 Package:</span>
+                        <span>{{ app.package_offered }}</span>
+                    </div>
+                    {% endif %}
+                    
+                    {% if app.offer_letter_url %}
+                    <div class="detail-item">
+                        <span class="label">📄 Document:</span>
+                        <a href="{{ app.offer_letter_url }}" target="_blank" class="doc-link">View Offer Letter</a>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                {% if app.notes %}
+                <div class="app-notes">
+                    <strong>Notes:</strong> {{ app.notes }}
+                </div>
+                {% endif %}
+                
+                <div class="action-buttons">
+                    <a href="{{ url_for('student_edit_application', app_id=app.id) }}" class="btn btn-edit btn-sm">Edit</a>
+                    <form method="POST" action="{{ url_for('student_delete_application', app_id=app.id) }}" 
+                          onsubmit="return confirm('Are you sure you want to delete this application?');"
+                          class="delete-form">
+                        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="no-data">No applications added yet. Add your first one above!</p>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    .applications-container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+    }
+    
+    .page-header h1 {
+        color: #2c3e50;
+        margin: 0;
+    }
+    
+    .btn {
+        padding: 10px 20px;
+        border-radius: 5px;
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.3s;
+        border: none;
+        cursor: pointer;
+    }
+    
+    .btn-primary {
+        background: #3498db;
+        color: white;
+    }
+    
+    .btn-secondary {
+        background: #95a5a6;
+        color: white;
+    }
+    
+    .btn-danger {
+        background: #e74c3c;
+        color: white;
+    }
+    
+    .btn-sm {
+        padding: 5px 15px;
+        font-size: 14px;
+    }
+    
+    .add-form-card {
+        background: white;
+        border-radius: 10px;
+        padding: 25px;
+        margin-bottom: 30px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .add-form-card h2 {
+        color: #2c3e50;
+        margin-top: 0;
+        margin-bottom: 20px;
+    }
+    
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+    }
+    
+    .form-group {
+        margin-bottom: 15px;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        color: #2c3e50;
+        font-weight: 500;
+        font-size: 14px;
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 14px;
+        box-sizing: border-box;
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-color: #3498db;
+    }
+    
+    .applications-list h2 {
+        color: #2c3e50;
+        margin-bottom: 20px;
+    }
+    
+    .application-card {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 15px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        position: relative;
+    }
+    
+    .app-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 15px;
+    }
+    
+    .app-header h3 {
+        color: #2c3e50;
+        margin: 0 0 5px 0;
+    }
+    
+    .position {
+        color: #7f8c8d;
+        margin: 0;
+    }
+    
+    .status-badge {
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 600;
+    }
+    
+    .status-applied { background: #e8f4f8; color: #3498db; }
+    .status-shortlisted { background: #fff3e0; color: #f39c12; }
+    .status-interview { background: #fff3cd; color: #f39c12; }
+    .status-offered { background: #d4edda; color: #27ae60; }
+    .status-rejected { background: #f8d7da; color: #e74c3c; }
+    .status-accepted { background: #d4edda; color: #27ae60; }
+    .status-declined { background: #f8d7da; color: #c0392b; }
+    
+    .app-details {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 10px;
+        margin-bottom: 15px;
+    }
+    
+    .detail-item {
+        display: flex;
+        gap: 5px;
+        font-size: 14px;
+    }
+    
+    .detail-item .label {
+        color: #7f8c8d;
+        font-weight: 500;
+    }
+    
+    .doc-link {
+        color: #3498db;
+        text-decoration: none;
+    }
+    
+    .doc-link:hover {
+        text-decoration: underline;
+    }
+    
+    .app-notes {
+        background: #f8f9fa;
+        padding: 10px;
+        border-radius: 5px;
+        font-size: 14px;
+        margin-bottom: 15px;
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 15px;
+    }
+    
+    .btn-edit {
+        background: #f39c12;
+        color: white;
+    }
+    
+    .btn-edit:hover {
+        background: #e67e22;
+    }
+    
+    .delete-form {
+        display: inline;
+    }
+    
+    .no-data {
+        text-align: center;
+        padding: 40px;
+        color: #7f8c8d;
+        background: white;
+        border-radius: 10px;
+    }
+    
+    @media (max-width: 768px) {
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
