@@ -3,9 +3,9 @@
 
 set -o errexit
 
-# Install Python dependencies
+# Install Python dependencies (use only binary wheels, no source builds)
 pip install --upgrade pip
-pip install -r requirements.txt
+pip install --only-binary=:all: -r requirements.txt || pip install -r requirements.txt
 
 # Initialize database
 python init_db.py
