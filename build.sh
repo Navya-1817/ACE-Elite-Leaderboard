@@ -3,9 +3,13 @@
 
 set -o errexit
 
-# Install Python dependencies (use only binary wheels, no source builds)
+# Upgrade pip
 pip install --upgrade pip
-pip install --only-binary=:all: -r requirements.txt || pip install -r requirements.txt
+
+# Install dependencies (numpy first, then pandas)
+pip install numpy==1.24.3
+pip install pandas==1.5.3
+pip install -r requirements.txt
 
 # Initialize database
 python init_db.py
