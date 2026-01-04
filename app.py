@@ -65,7 +65,9 @@ def cached(timeout=300):
     return decorator
 
 
-@app.route('/')
+@app.route('/', methods=["GET", "HEAD"])
+def health():
+    return "OK", 200
 def index():
     """Home page - redirect to appropriate dashboard"""
     if is_admin_logged_in():
