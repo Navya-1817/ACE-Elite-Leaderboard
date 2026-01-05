@@ -30,10 +30,13 @@ def authenticate_admin(username, password):
     Authenticate admin credentials
     Returns Admin object if valid, None otherwise
     """
-    admin = Admin.query.filter_by(username=username).first()
-    
-    if admin and admin.check_password(password):
-        return admin
+    try:
+        admin = Admin.query.filter_by(username=username).first()
+        
+        if admin and admin.check_password(password):
+            return admin
+    except Exception as e:
+        print(f"Admin authentication error: {e}")
     return None
 
 
@@ -42,10 +45,13 @@ def authenticate_student(roll_number, password):
     Authenticate student credentials
     Returns Student object if valid, None otherwise
     """
-    student = Student.query.filter_by(roll_number=roll_number).first()
-    
-    if student and student.check_password(password) and student.is_active:
-        return student
+    try:
+        student = Student.query.filter_by(roll_number=roll_number).first()
+        
+        if student and student.check_password(password) and student.is_active:
+            return student
+    except Exception as e:
+        print(f"Student authentication error: {e}")
     return None
 
 
@@ -67,6 +73,7 @@ def login_student(student):
     session['student_id'] = student.id
     session['student_name'] = student.name
     session['student_roll'] = student.roll_number
+    session.permanent = True  # Use permanent session
 
 
 def logout_student():
@@ -89,12 +96,20 @@ def is_student_logged_in():
 def get_current_student():
     """Get currently logged in student"""
     if 'student_id' in session:
-        return Student.query.get(session['student_id'])
+        try:
+            return Student.query.get(session['student_id'])
+        except Exception as e:
+            print(f"Error fetching current student: {e}")
+            return None
     return None
 
 
 def get_current_admin():
     """Get currently logged in admin or None"""
     if 'admin_id' in session:
-        return Admin.query.get(session['admin_id'])
+        try:
+            return Admin.query.get(session['admin_id'])
+        except Exception as e:
+            print(f"Error fetching current admin: {e}")
+            return None
     return None

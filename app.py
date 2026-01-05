@@ -65,15 +65,28 @@ def cached(timeout=300):
     return decorator
 
 
-@app.route('/', methods=["GET", "HEAD"])
-def health():
-    return "OK", 200
+@app.route('/')
 def index():
     """Home page - redirect to appropriate dashboard"""
-    if is_admin_logged_in():
-        return redirect(url_for('admin_dashboard'))
-    if is_student_logged_in():
-        return redirect(url_for('student_dashboard'))
+    try:
+        if is_admin_logged_in():
+            admin = Admin.query.get(session.get('admin_id'))
+            if admin:  # Verify admin exists in DB
+                return redirect(url_for('admin_dashboard'))
+            else:
+                logout_admin()  # Clean up invalid session
+        
+        if is_student_logged_in():
+            student = Student.query.get(session.get('student_id'))
+            if student:  # Verify student exists in DB
+                return redirect(url_for('student_dashboard'))
+            else:
+                logout_student()  # Clean up invalid session
+    except Exception as e:
+        # Clear sessions on any error
+        session.clear()
+        app.logger.error(f"Session error in index: {e}")
+    
     return redirect(url_for('student_login'))
 
 
@@ -84,17 +97,21 @@ def admin_login():
         return redirect(url_for('admin_dashboard'))
     
     if request.method == 'POST':
-        username = request.form.get('username', '').strip()
-        password = request.form.get('password', '')
-        
-        admin = authenticate_admin(username, password)
-        
-        if admin:
-            login_admin(admin)
-            flash('Login successful!', 'success')
-            return redirect(url_for('admin_dashboard'))
-        else:
-            flash('Invalid username or password', 'error')
+        try:
+            username = request.form.get('username', '').strip()
+            password = request.form.get('password', '')
+            
+            admin = authenticate_admin(username, password)
+            
+            if admin:
+                login_admin(admin)
+                flash('Login successful!', 'success')
+                return redirect(url_for('admin_dashboard'))
+            else:
+                flash('Invalid username or password', 'error')
+        except Exception as e:
+            app.logger.error(f"Admin login error: {e}")
+            flash('An error occurred during login. Please try again.', 'error')
     
     return render_template('admin_login.html')
 
@@ -112,179 +129,196 @@ def admin_logout():
 @login_required
 def admin_dashboard():
     """Admin dashboard with leaderboard and navigation - Optimized for 2000+ students"""
-    # Get filter parameters
-    platform = request.args.get('platform', 'all')
-    search = request.args.get('search', '').strip()
-    sort_by = request.args.get('sort', 'rating')
-    page = request.args.get('page', 1, type=int)
-    per_page = 100  # Increased for better performance
-    
-    # Get career tracking stats (cached for 5 minutes)
-    total_applications = Application.query.count()
-    total_accepted = Application.query.filter_by(status='accepted').count()
-    total_certifications = Certification.query.count()
-    total_internships = Internship.query.count()
-    
-    # Get all students with optimized query
-    students_query = Student.query
-    
-    # Apply search filter
-    if search:
-        students_query = students_query.filter(
-            (Student.name.ilike(f'%{search}%')) |
-            (Student.roll_number.ilike(f'%{search}%'))
-        )
-    
-    # Get total count before pagination
-    total_students = students_query.count()
-    
-    # Apply pagination - fetch only needed students
-    students = students_query.limit(per_page).offset((page - 1) * per_page).all()
-    
-    # Optimized: Get all latest stats in bulk queries instead of N+1
-    student_ids = [s.id for s in students]
-    
-    # Get latest stats for each platform in single queries
-    cf_stats_subquery = db.session.query(
-        StatsSnapshot.student_id,
-        func.max(StatsSnapshot.timestamp).label('max_timestamp')
-    ).filter(
-        StatsSnapshot.platform == 'CF',
-        StatsSnapshot.student_id.in_(student_ids)
-    ).group_by(StatsSnapshot.student_id).subquery()
-    
-    cf_stats = db.session.query(StatsSnapshot).join(
-        cf_stats_subquery,
-        and_(
-            StatsSnapshot.student_id == cf_stats_subquery.c.student_id,
-            StatsSnapshot.timestamp == cf_stats_subquery.c.max_timestamp,
-            StatsSnapshot.platform == 'CF'
-        )
-    ).all()
-    cf_stats_dict = {s.student_id: s for s in cf_stats}
-    
-    lc_stats_subquery = db.session.query(
-        StatsSnapshot.student_id,
-        func.max(StatsSnapshot.timestamp).label('max_timestamp')
-    ).filter(
-        StatsSnapshot.platform == 'LC',
-        StatsSnapshot.student_id.in_(student_ids)
-    ).group_by(StatsSnapshot.student_id).subquery()
-    
-    lc_stats = db.session.query(StatsSnapshot).join(
-        lc_stats_subquery,
-        and_(
-            StatsSnapshot.student_id == lc_stats_subquery.c.student_id,
-            StatsSnapshot.timestamp == lc_stats_subquery.c.max_timestamp,
-            StatsSnapshot.platform == 'LC'
-        )
-    ).all()
-    lc_stats_dict = {s.student_id: s for s in lc_stats}
-    
-    cc_stats_subquery = db.session.query(
-        StatsSnapshot.student_id,
-        func.max(StatsSnapshot.timestamp).label('max_timestamp')
-    ).filter(
-        StatsSnapshot.platform == 'CC',
-        StatsSnapshot.student_id.in_(student_ids)
-    ).group_by(StatsSnapshot.student_id).subquery()
-    
-    cc_stats = db.session.query(StatsSnapshot).join(
-        cc_stats_subquery,
-        and_(
-            StatsSnapshot.student_id == cc_stats_subquery.c.student_id,
-            StatsSnapshot.timestamp == cc_stats_subquery.c.max_timestamp,
-            StatsSnapshot.platform == 'CC'
-        )
-    ).all()
-    cc_stats_dict = {s.student_id: s for s in cc_stats}
-    
-    # Build leaderboard data using bulk-fetched stats
-    leaderboard_data = []
-    
-    for student in students:
-        student_data = {
-            'id': student.id,
-            'name': student.name,
-            'roll_number': student.roll_number,
-            'cf_handle': student.cf_handle,
-            'lc_username': student.lc_username,
-            'cc_username': student.cc_username,
-            'cf_stats': None,
-            'lc_stats': None,
-            'cc_stats': None
-        }
+    try:
+        # Get filter parameters
+        platform = request.args.get('platform', 'all')
+        search = request.args.get('search', '').strip()
+        sort_by = request.args.get('sort', 'rating')
+        page = request.args.get('page', 1, type=int)
+        per_page = 100  # Increased for better performance
         
-        # Get stats from bulk-fetched dictionaries
-        if student.cf_handle and student.id in cf_stats_dict:
-            cf_stat = cf_stats_dict[student.id]
-            if cf_stat.fetch_status == 'success':
-                student_data['cf_stats'] = {
-                    'rating': cf_stat.rating,
-                    'max_rating': cf_stat.max_rating,
-                    'solved': cf_stat.solved
-                }
+        # Get career tracking stats (cached for 5 minutes)
+        total_applications = Application.query.count()
+        total_accepted = Application.query.filter_by(status='accepted').count()
+        total_certifications = Certification.query.count()
+        total_internships = Internship.query.count()
         
-        if student.lc_username and student.id in lc_stats_dict:
-            lc_stat = lc_stats_dict[student.id]
-            if lc_stat.fetch_status == 'success':
-                student_data['lc_stats'] = {
-                    'solved': lc_stat.solved,
-                    'easy': lc_stat.easy,
-                    'medium': lc_stat.medium,
-                    'hard': lc_stat.hard
-                }
+        # Get all students with optimized query
+        students_query = Student.query
         
-        if student.cc_username and student.id in cc_stats_dict:
-            cc_stat = cc_stats_dict[student.id]
-            if cc_stat.fetch_status == 'success':
-                student_data['cc_stats'] = {
-                    'rating': cc_stat.rating,
-                    'solved': cc_stat.solved
-                }
+        # Apply search filter
+        if search:
+            students_query = students_query.filter(
+                (Student.name.ilike(f'%{search}%')) |
+                (Student.roll_number.ilike(f'%{search}%'))
+            )
         
-        leaderboard_data.append(student_data)
+        # Get total count before pagination
+        total_students = students_query.count()
+        
+        # Apply pagination - fetch only needed students
+        students = students_query.limit(per_page).offset((page - 1) * per_page).all()
+        
+        # Optimized: Get all latest stats in bulk queries instead of N+1
+        student_ids = [s.id for s in students]
     
-    # Apply platform filter and sorting
-    if platform == 'CF':
-        leaderboard_data = [s for s in leaderboard_data if s['cf_stats']]
-        if sort_by == 'rating':
-            leaderboard_data.sort(key=lambda x: x['cf_stats']['rating'], reverse=True)
-        elif sort_by == 'solved':
-            leaderboard_data.sort(key=lambda x: x['cf_stats']['solved'], reverse=True)
-    
-    elif platform == 'LC':
-        leaderboard_data = [s for s in leaderboard_data if s['lc_stats']]
-        if sort_by == 'solved':
-            leaderboard_data.sort(key=lambda x: x['lc_stats']['solved'], reverse=True)
-        elif sort_by == 'hard':
-            leaderboard_data.sort(key=lambda x: x['lc_stats']['hard'], reverse=True)
-    
-    elif platform == 'CC':
-        leaderboard_data = [s for s in leaderboard_data if s['cc_stats']]
-        if sort_by == 'rating':
-            leaderboard_data.sort(key=lambda x: x['cc_stats']['rating'], reverse=True)
-        elif sort_by == 'solved':
-            leaderboard_data.sort(key=lambda x: x['cc_stats']['solved'], reverse=True)
-    
-    # Calculate pagination
-    total_pages = (total_students + per_page - 1) // per_page
-    
-    return render_template(
-        'admin_dashboard.html',
-        leaderboard=leaderboard_data,
-        platform=platform,
-        search=search,
-        sort_by=sort_by,
-        total_students=total_students,
-        page=page,
-        total_pages=total_pages,
-        per_page=per_page,
-        total_applications=total_applications,
-        total_accepted=total_accepted,
-        total_certifications=total_certifications,
-        total_internships=total_internships
-    )
+        # Get latest stats for each platform in single queries
+        cf_stats_subquery = db.session.query(
+            StatsSnapshot.student_id,
+            func.max(StatsSnapshot.timestamp).label('max_timestamp')
+        ).filter(
+            StatsSnapshot.platform == 'CF',
+            StatsSnapshot.student_id.in_(student_ids)
+        ).group_by(StatsSnapshot.student_id).subquery()
+        
+        cf_stats = db.session.query(StatsSnapshot).join(
+            cf_stats_subquery,
+            and_(
+                StatsSnapshot.student_id == cf_stats_subquery.c.student_id,
+                StatsSnapshot.timestamp == cf_stats_subquery.c.max_timestamp,
+                StatsSnapshot.platform == 'CF'
+            )
+        ).all()
+        cf_stats_dict = {s.student_id: s for s in cf_stats}
+        
+        lc_stats_subquery = db.session.query(
+            StatsSnapshot.student_id,
+            func.max(StatsSnapshot.timestamp).label('max_timestamp')
+        ).filter(
+            StatsSnapshot.platform == 'LC',
+            StatsSnapshot.student_id.in_(student_ids)
+        ).group_by(StatsSnapshot.student_id).subquery()
+        
+        lc_stats = db.session.query(StatsSnapshot).join(
+            lc_stats_subquery,
+            and_(
+                StatsSnapshot.student_id == lc_stats_subquery.c.student_id,
+                StatsSnapshot.timestamp == lc_stats_subquery.c.max_timestamp,
+                StatsSnapshot.platform == 'LC'
+            )
+        ).all()
+        lc_stats_dict = {s.student_id: s for s in lc_stats}
+        
+        cc_stats_subquery = db.session.query(
+            StatsSnapshot.student_id,
+            func.max(StatsSnapshot.timestamp).label('max_timestamp')
+        ).filter(
+            StatsSnapshot.platform == 'CC',
+            StatsSnapshot.student_id.in_(student_ids)
+        ).group_by(StatsSnapshot.student_id).subquery()
+        
+        cc_stats = db.session.query(StatsSnapshot).join(
+            cc_stats_subquery,
+            and_(
+                StatsSnapshot.student_id == cc_stats_subquery.c.student_id,
+                StatsSnapshot.timestamp == cc_stats_subquery.c.max_timestamp,
+                StatsSnapshot.platform == 'CC'
+            )
+        ).all()
+        cc_stats_dict = {s.student_id: s for s in cc_stats}
+        
+        # Build leaderboard data using bulk-fetched stats
+        leaderboard_data = []
+        
+        for student in students:
+            student_data = {
+                'id': student.id,
+                'name': student.name,
+                'roll_number': student.roll_number,
+                'cf_handle': student.cf_handle,
+                'lc_username': student.lc_username,
+                'cc_username': student.cc_username,
+                'cf_stats': None,
+                'lc_stats': None,
+                'cc_stats': None
+            }
+            
+            # Get stats from bulk-fetched dictionaries
+            if student.cf_handle and student.id in cf_stats_dict:
+                cf_stat = cf_stats_dict[student.id]
+                if cf_stat.fetch_status == 'success':
+                    student_data['cf_stats'] = {
+                        'rating': cf_stat.rating,
+                        'max_rating': cf_stat.max_rating,
+                        'solved': cf_stat.solved
+                    }
+            
+            if student.lc_username and student.id in lc_stats_dict:
+                lc_stat = lc_stats_dict[student.id]
+                if lc_stat.fetch_status == 'success':
+                    student_data['lc_stats'] = {
+                        'solved': lc_stat.solved,
+                        'easy': lc_stat.easy,
+                        'medium': lc_stat.medium,
+                        'hard': lc_stat.hard
+                    }
+            
+            if student.cc_username and student.id in cc_stats_dict:
+                cc_stat = cc_stats_dict[student.id]
+                if cc_stat.fetch_status == 'success':
+                    student_data['cc_stats'] = {
+                        'rating': cc_stat.rating,
+                        'solved': cc_stat.solved
+                    }
+            
+            leaderboard_data.append(student_data)
+        
+        # Apply platform filter and sorting
+        if platform == 'CF':
+            leaderboard_data = [s for s in leaderboard_data if s['cf_stats']]
+            if sort_by == 'rating':
+                leaderboard_data.sort(key=lambda x: x['cf_stats']['rating'], reverse=True)
+            elif sort_by == 'solved':
+                leaderboard_data.sort(key=lambda x: x['cf_stats']['solved'], reverse=True)
+        
+        elif platform == 'LC':
+            leaderboard_data = [s for s in leaderboard_data if s['lc_stats']]
+            if sort_by == 'solved':
+                leaderboard_data.sort(key=lambda x: x['lc_stats']['solved'], reverse=True)
+            elif sort_by == 'hard':
+                leaderboard_data.sort(key=lambda x: x['lc_stats']['hard'], reverse=True)
+        
+        elif platform == 'CC':
+            leaderboard_data = [s for s in leaderboard_data if s['cc_stats']]
+            if sort_by == 'rating':
+                leaderboard_data.sort(key=lambda x: x['cc_stats']['rating'], reverse=True)
+            elif sort_by == 'solved':
+                leaderboard_data.sort(key=lambda x: x['cc_stats']['solved'], reverse=True)
+        
+        # Calculate pagination
+        total_pages = (total_students + per_page - 1) // per_page
+        
+        return render_template(
+            'admin_dashboard.html',
+            leaderboard=leaderboard_data,
+            platform=platform,
+            search=search,
+            sort_by=sort_by,
+            total_students=total_students,
+            page=page,
+            total_pages=total_pages,
+            per_page=per_page,
+            total_applications=total_applications,
+            total_accepted=total_accepted,
+            total_certifications=total_certifications,
+            total_internships=total_internships
+        )
+    except Exception as e:
+        app.logger.error(f"Admin dashboard error: {e}")
+        flash('An error occurred loading the dashboard. Please try again.', 'error')
+        return render_template('admin_dashboard.html',
+                             leaderboard=[],
+                             platform='all',
+                             search='',
+                             sort_by='rating',
+                             total_students=0,
+                             page=1,
+                             total_pages=0,
+                             per_page=100,
+                             total_applications=0,
+                             total_accepted=0,
+                             total_certifications=0,
+                             total_internships=0)
 
 
 @app.route('/admin/applications')
@@ -507,85 +541,121 @@ def student_profile(student_id):
 def student_register():
     """Student registration page"""
     if request.method == 'POST':
-        name = request.form.get('name', '').strip()
-        roll_number = request.form.get('roll_number', '').strip()
-        email = request.form.get('email', '').strip()
-        password = request.form.get('password', '')
-        confirm_password = request.form.get('confirm_password', '')
-        cf_handle = request.form.get('cf_handle', '').strip() or None
-        lc_username = request.form.get('lc_username', '').strip() or None
-        cc_username = request.form.get('cc_username', '').strip() or None
-        
-        # Validation
-        if not name or not roll_number or not email or not password:
-            flash('Name, Roll Number, Email, and Password are required', 'error')
-            return render_template('student_register.html')
-        
-        if password != confirm_password:
-            flash('Passwords do not match', 'error')
-            return render_template('student_register.html')
-        
-        if len(password) < 6:
-            flash('Password must be at least 6 characters long', 'error')
-            return render_template('student_register.html')
-        
-        if not cf_handle and not lc_username and not cc_username:
-            flash('Please provide at least one platform username', 'error')
-            return render_template('student_register.html')
-        
-        # Check if roll number already exists
-        if Student.query.filter_by(roll_number=roll_number).first():
-            flash('Roll number already registered', 'error')
-            return render_template('student_register.html')
-        
-        # Check if email already exists
-        if Student.query.filter_by(email=email).first():
-            flash('Email already registered', 'error')
-            return render_template('student_register.html')
-        
-        # Validate platform usernames
-        validation_errors = []
-        
-        if cf_handle:
-            if not codeforces_api.validate_handle(cf_handle):
-                validation_errors.append(f'Codeforces handle "{cf_handle}" not found')
-        
-        if lc_username:
-            if not leetcode_api.validate_username(lc_username):
-                validation_errors.append(f'LeetCode username "{lc_username}" not found')
-        
-        if cc_username:
-            if not codechef_api.validate_username(cc_username):
-                validation_errors.append(f'CodeChef username "{cc_username}" not found')
-        
-        if validation_errors:
-            for error in validation_errors:
-                flash(error, 'error')
-            return render_template('student_register.html')
-        
-        # Create student
-        student = Student(
-            name=name,
-            roll_number=roll_number,
-            email=email,
-            cf_handle=cf_handle,
-            lc_username=lc_username,
-            cc_username=cc_username,
-            is_active=True
-        )
-        student.set_password(password)
-        
-        db.session.add(student)
-        db.session.commit()
-        
-        # Fetch initial stats
-        scheduler.fetch_student_stats(student.id)
-        
-        # Auto-login the student
-        login_student(student)
-        
-        flash(f'Registration successful! Welcome, {name}!', 'success')
-        return redirect(url_for('student_dashboard'))
+        try:
+            name = request.form.get('name', '').strip()
+            roll_number = request.form.get('roll_number', '').strip()
+            email = request.form.get('email', '').strip()
+            password = request.form.get('password', '')
+            confirm_password = request.form.get('confirm_password', '')
+            cf_handle = request.form.get('cf_handle', '').strip() or None
+            lc_username = request.form.get('lc_username', '').strip() or None
+            cc_username = request.form.get('cc_username', '').strip() or None
+            
+            # Validation
+            if not name or not roll_number or not email or not password:
+                flash('Name, Roll Number, Email, and Password are required', 'error')
+                return render_template('student_register.html')
+            
+            if password != confirm_password:
+                flash('Passwords do not match', 'error')
+                return render_template('student_register.html')
+            
+            if len(password) < 6:
+                flash('Password must be at least 6 characters long', 'error')
+                return render_template('student_register.html')
+            
+            if not cf_handle and not lc_username and not cc_username:
+                flash('Please provide at least one platform username', 'error')
+                return render_template('student_register.html')
+            
+            # Check if roll number already exists
+            if Student.query.filter_by(roll_number=roll_number).first():
+                flash('Roll number already registered', 'error')
+                return render_template('student_register.html')
+            
+            # Check if email already exists
+            if Student.query.filter_by(email=email).first():
+                flash('Email already registered', 'error')
+                return render_template('student_register.html')
+            
+            # Validate platform usernames
+            validation_errors = []
+            
+            if cf_handle:
+                try:
+                    if not codeforces_api.validate_handle(cf_handle):
+                        validation_errors.append(f'Codeforces handle "{cf_handle}" not found')
+                except Exception as e:
+                    app.logger.error(f"Codeforces validation error: {e}")
+                    validation_errors.append('Unable to validate Codeforces handle. Please try again later.')
+            
+            if lc_username:
+                try:
+                    if not leetcode_api.validate_username(lc_username):
+                        validation_errors.append(f'LeetCode username "{lc_username}" not found')
+                except Exception as e:
+                    app.logger.error(f"LeetCode validation error: {e}")
+                    validation_errors.append('Unable to validate LeetCode username. Please try again later.')
+            
+            if cc_username:
+                try:
+                    if not codechef_api.validate_username(cc_username):
+                        validation_errors.append(f'CodeChef username "{cc_username}" not found')
+                except Exception as e:
+                    app.logger.error(f"CodeChef validation error: {e}")
+                    validation_errors.append('Unable to validate CodeChef username. Please try again later.')
+            
+            if validation_errors:
+                for error in validation_errors:
+                    flash(error, 'error')
+                return render_template('student_register.html')
+            
+            # Create student
+            student = Student(
+                name=name,
+                roll_number=roll_number,
+                email=email,
+                cf_handle=cf_handle,
+                lc_username=lc_username,
+                cc_username=cc_username,
+                is_active=True
+            )
+            student.set_password(password)
+            
+            db.session.add(student)
+            db.session.flush()  # Ensure student ID is generated
+            db.session.commit()
+            
+            if app.config['DEBUG']:
+                print(f"✅ Student registered: {student.roll_number} (ID: {student.id})")
+            
+            # Fetch initial stats in background (don't block registration)
+            try:
+                from threading import Thread
+                def fetch_stats_bg():
+                    with app.app_context():
+                        try:
+                            scheduler.fetch_student_stats(student.id)
+                        except Exception as e:
+                            print(f"Error fetching initial stats: {e}")
+                
+                thread = Thread(target=fetch_stats_bg)
+                thread.daemon = True
+                thread.start()
+            except Exception as e:
+                app.logger.error(f"Error starting stats fetch: {e}")
+            
+            # Auto-login the student
+            login_student(student)
+            if app.config['DEBUG']:
+                print(f"✅ Student logged in: session['student_id']={session.get('student_id')}")
+            
+            flash(f'Registration successful! Welcome, {name}!', 'success')
+            return redirect(url_for('student_dashboard'))
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Registration error: {e}")
+            flash('An error occurred during registration. Please try again.', 'error')
     
     return render_template('student_register.html')
 
@@ -818,17 +888,39 @@ def student_login():
         return redirect(url_for('student_dashboard'))
     
     if request.method == 'POST':
-        roll_number = request.form.get('roll_number', '').strip()
-        password = request.form.get('password', '')
-        
-        student = authenticate_student(roll_number, password)
-        
-        if student:
-            login_student(student)
-            flash('Login successful!', 'success')
-            return redirect(url_for('student_dashboard'))
-        else:
-            flash('Invalid roll number or password', 'error')
+        try:
+            roll_number = request.form.get('roll_number', '').strip()
+            password = request.form.get('password', '')
+            
+            if app.config['DEBUG']:
+                print(f"🔐 Login attempt for roll: {roll_number}")
+            
+            # Check if student exists
+            student = Student.query.filter_by(roll_number=roll_number).first()
+            if app.config['DEBUG']:
+                if student:
+                    print(f"✅ Student found: {student.name} (Active: {student.is_active})")
+                    print(f"   Password hash exists: {bool(student.password_hash)}")
+                else:
+                    print(f"❌ No student found with roll number: {roll_number}")
+            
+            student = authenticate_student(roll_number, password)
+            
+            if student:
+                login_student(student)
+                if app.config['DEBUG']:
+                    print(f"✅ Login successful - Session ID: {session.get('student_id')}")
+                flash('Login successful!', 'success')
+                return redirect(url_for('student_dashboard'))
+            else:
+                if app.config['DEBUG']:
+                    print(f"❌ Authentication failed for: {roll_number}")
+                flash('Invalid roll number or password', 'error')
+        except Exception as e:
+            if app.config['DEBUG']:
+                print(f"❌ Login error: {e}")
+            app.logger.error(f"Student login error: {e}")
+            flash('An error occurred during login. Please try again.', 'error')
     
     return render_template('student_login.html')
 
@@ -848,30 +940,41 @@ def student_dashboard():
     """Student's own dashboard"""
     student = get_current_student()
     
-    # Get stats history
-    days = int(request.args.get('days', 30))
-    cf_history_raw = student.get_stats_history('CF', days) if student.cf_handle else []
-    lc_history_raw = student.get_stats_history('LC', days) if student.lc_username else []
-    cc_history_raw = student.get_stats_history('CC', days) if student.cc_username else []
+    # Validate student exists (edge case: deleted from DB while logged in)
+    if not student:
+        logout_student()
+        flash('Your account was not found. Please login again.', 'error')
+        return redirect(url_for('student_login'))
     
-    # Format for Chart.js
-    cf_history = [{'date': s.timestamp.strftime('%Y-%m-%d'), 'value': s.rating or 0} for s in cf_history_raw]
-    lc_history = [{'date': s.timestamp.strftime('%Y-%m-%d'), 'value': s.solved or 0} for s in lc_history_raw]
-    cc_history = [{'date': s.timestamp.strftime('%Y-%m-%d'), 'value': s.rating or 0} for s in cc_history_raw]
-    
-    # Get career data counts
-    app_count = student.applications.count()
-    cert_count = student.certifications.count()
-    intern_count = student.internships.count()
-    
-    return render_template('student_dashboard.html',
-                         student=student,
-                         cf_history=cf_history,
-                         lc_history=lc_history,
-                         cc_history=cc_history,
-                         app_count=app_count,
-                         cert_count=cert_count,
-                         intern_count=intern_count)
+    try:
+        # Get stats history
+        days = int(request.args.get('days', 30))
+        cf_history_raw = student.get_stats_history('CF', days) if student.cf_handle else []
+        lc_history_raw = student.get_stats_history('LC', days) if student.lc_username else []
+        cc_history_raw = student.get_stats_history('CC', days) if student.cc_username else []
+        
+        # Format for Chart.js
+        cf_history = [{'date': s.timestamp.strftime('%Y-%m-%d'), 'value': s.rating or 0} for s in cf_history_raw]
+        lc_history = [{'date': s.timestamp.strftime('%Y-%m-%d'), 'value': s.solved or 0} for s in lc_history_raw]
+        cc_history = [{'date': s.timestamp.strftime('%Y-%m-%d'), 'value': s.rating or 0} for s in cc_history_raw]
+        
+        # Get career data counts
+        app_count = student.applications.count()
+        cert_count = student.certifications.count()
+        intern_count = student.internships.count()
+        
+        return render_template('student_dashboard.html',
+                             student=student,
+                             cf_history=cf_history,
+                             lc_history=lc_history,
+                             cc_history=cc_history,
+                             app_count=app_count,
+                             cert_count=cert_count,
+                             intern_count=intern_count)
+    except Exception as e:
+        app.logger.error(f"Student dashboard error for ID {student.id}: {e}")
+        flash('An error occurred loading your dashboard. Please try again.', 'error')
+        return redirect(url_for('student_login'))
 
 
 @app.route('/student/profile/edit', methods=['GET', 'POST'])
@@ -879,6 +982,11 @@ def student_dashboard():
 def student_edit_profile():
     """Student edit their own profile"""
     student = get_current_student()
+    
+    if not student:
+        logout_student()
+        flash('Your account was not found. Please login again.', 'error')
+        return redirect(url_for('student_login'))
     
     if request.method == 'POST':
         try:
@@ -912,6 +1020,11 @@ def student_edit_profile():
 def student_my_applications():
     """Student manage their own applications"""
     student = get_current_student()
+    
+    if not student:
+        logout_student()
+        flash('Your account was not found. Please login again.', 'error')
+        return redirect(url_for('student_login'))
     
     if request.method == 'POST':
         try:
@@ -956,6 +1069,11 @@ def student_my_certifications():
     """Student manage their own certifications"""
     student = get_current_student()
     
+    if not student:
+        logout_student()
+        flash('Your account was not found. Please login again.', 'error')
+        return redirect(url_for('student_login'))
+    
     if request.method == 'POST':
         try:
             # Handle file upload
@@ -999,6 +1117,11 @@ def student_my_certifications():
 def student_my_internships():
     """Student manage their own internships"""
     student = get_current_student()
+    
+    if not student:
+        logout_student()
+        flash('Your account was not found. Please login again.', 'error')
+        return redirect(url_for('student_login'))
     
     if request.method == 'POST':
         try:
@@ -1382,9 +1505,78 @@ def admin_toggle_student_active(student_id):
     return redirect(request.referrer or url_for('admin_dashboard'))
 
 
+@app.route('/admin/refresh_all_stats', methods=['POST'])
+@login_required
+def admin_refresh_all_stats():
+    """Admin manually trigger stats refresh for all students"""
+    try:
+        from threading import Thread
+        
+        def async_fetch():
+            try:
+                with app.app_context():
+                    print("Starting stats refresh for all students...")
+                    scheduler.fetch_all_stats()
+                    print("Stats refresh completed!")
+            except Exception as e:
+                print(f"Error in async fetch: {e}")
+                app.logger.error(f"Error in async fetch: {e}")
+        
+        # Run in background thread to avoid timeout
+        thread = Thread(target=async_fetch)
+        thread.daemon = True
+        thread.start()
+        
+        flash('Stats refresh started! This may take a few minutes. Check back soon.', 'success')
+    except Exception as e:
+        app.logger.error(f"Error triggering stats refresh: {e}")
+        flash(f'Error starting stats refresh: {str(e)}', 'error')
+    
+    return redirect(url_for('admin_dashboard'))
+
+
+@app.route('/admin/refresh_student_stats/<int:student_id>', methods=['POST'])
+@login_required
+def admin_refresh_student_stats(student_id):
+    """Admin manually trigger stats refresh for a single student"""
+    try:
+        from threading import Thread
+        
+        def async_fetch():
+            with app.app_context():
+                scheduler.fetch_student_stats(student_id)
+        
+        # Run in background thread
+        thread = Thread(target=async_fetch)
+        thread.daemon = True
+        thread.start()
+        
+        flash('Stats refresh started for this student!', 'success')
+    except Exception as e:
+        app.logger.error(f"Error triggering student stats refresh: {e}")
+        flash('Error starting stats refresh. Please try again.', 'error')
+    
+    return redirect(request.referrer or url_for('admin_dashboard'))
+
+
 if __name__ == '__main__':
     with app.app_context():
+        # Create all tables
         db.create_all()
+        
+        # Log database info
+        print(f"\n{'='*60}")
+        print(f"📊 Database: {app.config['SQLALCHEMY_DATABASE_URI']}")
+        
+        # Count existing students
+        student_count = Student.query.count()
+        print(f"👥 Registered students: {student_count}")
+        
+        if student_count > 0:
+            print(f"\n📋 Existing students:")
+            for student in Student.query.limit(10).all():
+                print(f"   - {student.roll_number}: {student.name}")
+        print(f"{'='*60}\n")
     
     # Start the scheduler
     scheduler.start()

@@ -29,6 +29,30 @@
         transform: translateY(-1px);
         box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
     }
+    
+    .btn-refresh {
+        background: #3b82f6;
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+    }
+    
+    .btn-refresh:hover {
+        background: #2563eb;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
 </style>
 <div class="dashboard">
     <div class="dashboard-header">
@@ -36,7 +60,12 @@
             <h1>📊 Admin Dashboard</h1>
             <p class="subtitle">Total Students: {{ total_students }}</p>
         </div>
-        <a href="{{ url_for('admin_import_students') }}" class="btn btn-import">📤 Import Students (Excel)</a>
+        <div class="action-buttons">
+            <form action="{{ url_for('admin_refresh_all_stats') }}" method="POST" style="display: inline;">
+                <button type="submit" class="btn btn-refresh" onclick="return confirm('This will update stats for all students. It may take a few minutes. Continue?')">🔄 Refresh All Stats</button>
+            </form>
+            <a href="{{ url_for('admin_import_students') }}" class="btn btn-import">📤 Import Students</a>
+        </div>
     </div>
 
     <!-- Career Tracking Stats Cards -->

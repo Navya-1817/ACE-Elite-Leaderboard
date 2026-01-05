@@ -84,17 +84,19 @@ class StatsScheduler:
     
     def _fetch_student_all_platforms(self, student):
         """Fetch stats for a single student from all platforms"""
-        print(f"📌 Fetching: {student.name} ({student.roll_number})")
-        
-        # Fetch from all platforms
-        if student.cf_handle:
-            self._fetch_codeforces_stats(student)
-        
-        if student.lc_username:
-            self._fetch_leetcode_stats(student)
-        
-        if student.cc_username:
-            self._fetch_codechef_stats(student)
+        # Each thread needs its own app context
+        with self.app.app_context():
+            print(f"📌 Fetching: {student.name} ({student.roll_number})")
+            
+            # Fetch from all platforms
+            if student.cf_handle:
+                self._fetch_codeforces_stats(student)
+            
+            if student.lc_username:
+                self._fetch_leetcode_stats(student)
+            
+            if student.cc_username:
+                self._fetch_codechef_stats(student)
     
     def _fetch_codeforces_stats(self, student):
         """Fetch and store Codeforces stats for a student with retry logic"""

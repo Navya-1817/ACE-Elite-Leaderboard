@@ -1,10 +1,18 @@
 import os
+from datetime import timedelta
 from dotenv import load_dotenv
 
 load_dotenv()
 
 class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
+    DEBUG = os.getenv('FLASK_ENV', 'development') == 'development'
+    
+    # Session configuration
+    PERMANENT_SESSION_LIFETIME = timedelta(days=7)  # Sessions last 7 days
+    SESSION_COOKIE_SECURE = os.getenv('FLASK_ENV') != 'development'  # HTTPS only in prod
+    SESSION_COOKIE_HTTPONLY = True  # Prevent JS access
+    SESSION_COOKIE_SAMESITE = 'Lax'  # CSRF protection
     
     # Database - automatically handles PostgreSQL for production (Render, Heroku, Railway)
     DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///cp_tracker.db')
